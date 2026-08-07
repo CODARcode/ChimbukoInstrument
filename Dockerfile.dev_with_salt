@@ -1,0 +1,19 @@
+FROM paratools/salt-dev:latest as base
+
+WORKDIR /home/salt/src
+RUN <<EOC
+#!/usr/bin/env bash
+set -euo pipefail
+  git clone --recursive https://github.com/ParaToolsInc/salt.git
+  cd salt
+  # Tell CMake to use the clang/clang++ compiler to build SALT-FM
+  export CC=clang
+  export CXX=clang++
+  # configure SALT-FM and generate build system
+  cmake -Wdev -Wdeprecated -S . -B build -DCMAKE_INSTALL_PREFIX=/opt/salt
+  cmake --build build --parallel # Add --verbose to debug something going wrong
+  cmake --install build
+  cd ..
+  rm -rf salt
+EOC
+
