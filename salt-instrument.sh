@@ -46,13 +46,13 @@ container_id=$(docker run --rm -d  \
 
 echo "Container is running at ${container_id}"
 
-extensions=(cpp h hpp c cc)
+extensions=(cpp h hpp c cc cu)
 
 declare -A languages
 #languages["cpp"]="c++"
 languages["h"]="c++"  #ambiguous
 languages["hpp"]="c++"
-#languages["c"]="c"
+languages["cu"]="c++"
 
 find_args=()
 for ext in "${extensions[@]}"; do
