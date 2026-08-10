@@ -46,10 +46,10 @@ container_id=$(docker run --rm -d  \
 
 echo "Container is running at ${container_id}"
 
-extensions=(cpp h hpp c cc cu)
+extensions=(cpp h hpp c cc cu hip)
 
 declare -A languages
-#languages["cpp"]="c++"
+languages["hip"]="c++"
 languages["h"]="c++"  #ambiguous
 languages["hpp"]="c++"
 languages["cu"]="c++"
