@@ -23,3 +23,10 @@ To your include paths, add `-I/path/to/installof/perfstubs/include -I/path/to/th
 To your link line, add `-L/path/to/installof/perfstubs/lib -lperfstubs`
 
 The resulting compiled executables should now be instrumented and ready for **tau_exec**.
+
+## Options
+`salt-instrument.sh` also supports the following command line arguments:
+
+- `--overwrite`    Delete and recreate the `${source_directory}_inst` directory if it already exists instead of exiting with an error.
+
+- `--tau_select_file=<filename>`  Pass a TAU select file to control the instrumentation at function and/or file-level granularity. Refer to [TAU's documentation](https://www.cs.uoregon.edu/research/tau/docs/html-docs/latest/taucompiler/taucompiler.html) for guidance. Note that at present, function strings beginning with a wildcard (#) must be placed in quotation marks (e.g. `"#excluded_funcs"` rather than `#excluded_funcs`)

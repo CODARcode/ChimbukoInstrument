@@ -11,28 +11,64 @@ value_in_array() {
     return 1
 }
 
-narg=$#
-if [[ $narg != 1 ]]; then
-    echo "Usage /path/to/salt-instrument.sh <source-directory>"
-    exit
+tau_select_file=""
+overwrite=""
+# Parse options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+	#Provide a TAU instrumentation file
+        --tau_select_file=*)
+            tau_select_file="${1#*=}"
+            shift
+            ;;
+	#Overwrite existing instrumented files if exist (this will delete the existing instrumented file directory)
+	--overwrite)
+	    overwrite="TRUE"
+	    shift
+	    ;;
+        --*)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Exactly one positional argument should remain
+if [[ $# -ne 1 ]]; then
+    echo "$@"
+    echo "Usage: /path/to/salt-instrument.sh [--overwrite] [--tau_select_file=<filename>] <source-directory>"
+    exit 1
 fi
 
-orig_srcdir=$(readlink -f $1)
-if [ ! -d ${orig_srcdir} ]; then
+orig_srcdir=$(readlink -f "$1")
+if [[ ! -d "$orig_srcdir" ]]; then
     echo "Must be a directory"
-    exit
+    exit 1
 fi
 
 srcdir="${orig_srcdir}_inst"
 
 echo "Instrumenting within a copied directory, ${srcdir}"
-
 if [ -e ${srcdir} ]; then
-    echo "Output directory already exists, please move/remove it before continuing"
-    exit
+    if [ -n "${overwrite}" ]; then
+	rm -rf ${srcdir}
+    else
+	echo "Output directory already exists, please move/remove it before continuing"
+	exit 1
+    fi
 fi
 
 cp -rd ${orig_srcdir} ${srcdir}
+
+# put the select file inside the mounted directory
+if [[ -n "$tau_select_file" ]]; then
+    echo "TAU select file: $tau_select_file"
+    cp ${tau_select_file} ${srcdir}/tau.select
+    tau_select_file=/data/tau.select
+fi
 
 echo "Source directory ${srcdir}"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -80,7 +116,7 @@ for f in ${files[@]}; do
 
     if ! $(value_in_array "${ext}" "${extensions[@]}"); then
 	echo "Extension ${ext} doesn't match expectation for file ${f}"
-	exit
+	exit 1
     fi
 
     intf="/data/${relf}"
@@ -89,7 +125,9 @@ for f in ${files[@]}; do
     if [[ -v languages["$ext"] ]]; then
 	extra_args+=("--lang=${languages[$ext]}")
     fi
-   	
+    if [[ -n "$tau_select_file" ]]; then
+	extra_args+=("--tau_select_file=${tau_select_file}")
+    fi   
 
     docker exec  --user "$(id -u):$(id -g)" \
 	   "$container_id" \
@@ -100,13 +138,16 @@ echo "Executing with file ${intf}"
 echo "Extra arguments: $*"
 
 cd "$(dirname -- "$intf")"
+set -x
 /opt/salt/bin/saltfm --config_file=/script/perfstubs_config_gpu.yaml "$@" "$intf" > /tmp/salt-inst-log 2>&1
+set +x
 ret=$?
 if [ $ret == 1 ]; then
    echo "SALT-FM execution failed, log content:"
    cat /tmp/salt-inst-log
 else
    echo "Success"
+   #cat /tmp/salt-inst-log
 fi
 ' \
 	   sh "$intf" "${extra_args[@]}"
