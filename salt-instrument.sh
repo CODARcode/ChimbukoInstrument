@@ -13,11 +13,13 @@ value_in_array() {
 
 tau_select_file=""
 overwrite=""
+instrument_inline=""
+llvm_args_in=()
 # Parse options
 while [[ $# -gt 0 ]]; do
     case "$1" in
 	#Provide a TAU instrumentation file
-        --tau_select_file=*)
+        --tau-select-file=*)
             tau_select_file="${1#*=}"
             shift
             ;;
@@ -26,6 +28,14 @@ while [[ $# -gt 0 ]]; do
 	    overwrite="TRUE"
 	    shift
 	    ;;
+	--instrument-inline)
+	    instrument_inline="TRUE"
+	    shift
+	    ;;
+	--llvm-arg=*)
+            llvm_args_in+=("${1#*=}")
+            shift
+            ;;	    	
         --*)
             echo "Unknown option: $1"
             exit 1
@@ -80,6 +90,12 @@ container_id=$(docker run --rm -d  \
   paratools/salt-dev-with-salt \
   sleep infinity)
 
+cleanup() {
+    docker kill ${container_id}
+}
+trap cleanup EXIT
+
+
 echo "Container is running at ${container_id}"
 
 extensions=(cpp h hpp c cc cu hip)
@@ -128,18 +144,44 @@ for f in ${files[@]}; do
     if [[ -n "$tau_select_file" ]]; then
 	extra_args+=("--tau_select_file=${tau_select_file}")
     fi   
+    if [ -n "${instrument_inline}" ]; then
+	extra_args+=("--tau_instrument_inline")
+    fi    
 
+    nextra=${#extra_args[@]}
+
+    llvm_args=(${llvm_args_in[@]})
+    if [[ -v languages["$ext"] ]]; then
+	llvm_args+=("-x ${languages[$ext]}")
+    fi
+    
+    if [[ ${#llvm_args[@]} -gt 0 ]]; then
+	llvm_args=("--" ${llvm_args[@]})
+    fi    
+    
     docker exec  --user "$(id -u):$(id -g)" \
 	   "$container_id" \
 	   bash -lc '
 intf=$1
 shift
+nextra=$1
+shift
+
+extra_args=()
+for ((i=0; i<${nextra}; i++))
+do
+  extra_args+=("$1")
+  shift
+done
+
+
 echo "Executing with file ${intf}"
-echo "Extra arguments: $*"
+echo "Extra arguments: ${extra_args[@]}"
+echo "LLVM arguments: $*"
 
 cd "$(dirname -- "$intf")"
 set -x
-/opt/salt/bin/saltfm --config_file=/script/perfstubs_config_gpu.yaml "$@" "$intf" > /tmp/salt-inst-log 2>&1
+/opt/salt/bin/saltfm --tau_fabricate_unknown_types --config_file=/script/perfstubs_config_gpu.yaml "${extra_args[@]}" "$intf" "$@" > /tmp/salt-inst-log 2>&1
 set +x
 ret=$?
 if [ $ret == 1 ]; then
@@ -150,7 +192,7 @@ else
    #cat /tmp/salt-inst-log
 fi
 ' \
-	   sh "$intf" "${extra_args[@]}"
+	   sh "$intf" "$nextra" "${extra_args[@]}" "${llvm_args[@]}"
 
     if [ -e ${absf_inst} ]; then
 	echo "Replacing ${absf} with ${absf_inst}"
@@ -158,7 +200,4 @@ fi
     fi
     
 done
-
-
-docker kill ${container_id}
 
