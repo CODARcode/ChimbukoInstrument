@@ -9,9 +9,16 @@ main_insert:
   - "PERFSTUBS_INITIALIZE();"
   - "PERFSTUBS_TIMER_START_FUNC(_timer);"
 
+# Activate with --tau_use_cxx_api
+main_insert_scope:
+  - "PERFSTUBS_INITIALIZE();"
+  - "PERFSTUBS_SCOPED_TIMER_FUNC();"
+
 function_begin_insert:
   - "PERFSTUBS_TIMER_START_FUNC(_timer);"
 
+function_begin_insert_scope:
+  - "PERFSTUBS_SCOPED_TIMER_FUNC();"
+
 function_end_insert:
   - "PERFSTUBS_TIMER_STOP_FUNC(_timer);"
-

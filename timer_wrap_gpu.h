@@ -11,6 +11,7 @@ inline __device__ char* ps_make_timer_name_(const char * file, const char * func
 #define PERFSTUBS_TIMER_START_FUNC(A)
 #define PERFSTUBS_TIMER_STOP_FUNC(A)
 #define PERFSTUBS_INITIALIZE()
+#define PERFSTUBS_SCOPED_TIMER_FUNC()
 #else
 #warning "HOST COMPILE"
 #define PERFSTUBS_USE_TIMERS

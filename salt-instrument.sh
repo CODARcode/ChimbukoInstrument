@@ -15,6 +15,7 @@ tau_select_file=""
 overwrite=""
 instrument_inline=""
 llvm_args_in=()
+languages_override=()
 # Parse options
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -35,7 +36,12 @@ while [[ $# -gt 0 ]]; do
 	--llvm-arg=*)
             llvm_args_in+=("${1#*=}")
             shift
-            ;;	    	
+            ;;
+  	--ext-map=*)
+	    map="${1#*=}"
+	    languages_override+=(${map})
+	    shift
+	    ;;
         --*)
             echo "Unknown option: $1"
             exit 1
@@ -106,6 +112,13 @@ languages["h"]="c++"  #ambiguous
 languages["hpp"]="c++"
 languages["cu"]="c++"
 
+for map in "${languages_override[@]}"; do
+    ext="${map%%=*}"
+    lang="${map#*=}"
+    languages[${ext}]=${lang}
+    echo "Language override: ${ext} -> ${languages[${ext}]}"
+done
+
 find_args=()
 for ext in "${extensions[@]}"; do
   find_args+=( -name "*.$ext" -o )
@@ -140,6 +153,10 @@ for f in ${files[@]}; do
     extra_args=()
     if [[ -v languages["$ext"] ]]; then
 	extra_args+=("--lang=${languages[$ext]}")
+
+	if [[ ${languages["$ext"]} == "c++" ]]; then
+	    extra_args+=("--tau_use_cxx_api")
+	fi	
     fi
     if [[ -n "$tau_select_file" ]]; then
 	extra_args+=("--tau_select_file=${tau_select_file}")
