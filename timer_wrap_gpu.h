@@ -1,3 +1,6 @@
+#ifndef _CHIMBUKO_TIMER_WRAP_GPU_H
+#define _CHIMBUKO_TIMER_WRAP_GPU_H
+
 #ifdef __HIP__
 //Fix issues with HIP doing some kind of __global__ device function compilation on the host pass
 inline __device__ void* ps_timer_create_(const char *timer_name){}
@@ -16,4 +19,6 @@ inline __device__ char* ps_make_timer_name_(const char * file, const char * func
 #warning "HOST COMPILE"
 #define PERFSTUBS_USE_TIMERS
 #include "perfstubs_api/timer.h"
+#endif
+
 #endif
