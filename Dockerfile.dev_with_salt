@@ -6,6 +6,8 @@ RUN <<EOC
 set -euo pipefail
   git clone --recursive https://github.com/ParaToolsInc/salt.git
   cd salt
+  mkdir -p /opt/salt
+  git log -1 --format='commit %H' > /opt/salt/git_version 
   # Tell CMake to use the clang/clang++ compiler to build SALT-FM
   export CC=clang
   export CXX=clang++
